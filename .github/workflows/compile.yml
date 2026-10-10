@@ -19,21 +19,20 @@ jobs:
         distribution: 'zulu'
         java-version: '8'
 
-    - name: Compile Java Code with lsd.jar
+    - name: Compile Target Files with lsd.jar
       run: |
         mkdir -p build/classes
         mkdir -p build/out
         
-        # Задействуем оригинальный lsd.jar из папки tools вашего репозитория
-        # Он содержит в себе абсолютно все заводские классы, константы и конструкторы VAG
+        # Компилируем ИСКЛЮЧИТЕЛЬНО два наших файла.
+        # Все зависимости (включая ManeuverDescriptorSender) javac возьмет в готовом виде из оригинального tools/lsd.jar
         javac -source 1.6 -target 1.6 -cp "tools/lsd.jar" -d build/classes \
           src/de/vw/mib/asl/internal/androidauto/target/NavTurn.java \
-          src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorSender.java \
           src/de/vw/mib/asl/internal/androidauto/target/NavigationHandler.java
         
     - name: Create JAR Archive
       run: |
-        # Чисто упаковываем скомпилированные нами модифицированные классы
+        # Упаковываем скомпилированные классы в итоговый патч
         jar cvf build/out/VCAndroidAuto.jar -C build/classes de
 
     - name: Upload Artifact
