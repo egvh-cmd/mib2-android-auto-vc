@@ -1,0 +1,43 @@
+name: Compile VCAndroidAuto
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 8
+      uses: actions/actions-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '8'
+
+    - name: Download dependencies
+      run: |
+        mkdir -p tools
+        # Скачиваем декомпилятор/компилятор CFR, который указан в проекте
+        curl -L -o tools/cfr-0.152.jar https://github.com
+
+    - name: Compile Java Code
+      run: |
+        mkdir -p build/classes
+        mkdir -p build/out
+        # Компилируем исправленный файл. В качестве библиотек используем структуры проекта
+        javac -source 1.2 -target 1.2 -d build/classes src/de/vw/mib/asl/internal/androidauto/target/NavigationHandler.java
+        
+    - name: Create JAR Archive
+      run: |
+        jar cvf build/out/VCAndroidAuto.jar -C build/classes .
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: VCAndroidAuto-Fixed-Jar
+        path: build/out/VCAndroidAuto.jar
