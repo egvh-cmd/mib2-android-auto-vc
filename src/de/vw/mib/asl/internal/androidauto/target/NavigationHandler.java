@@ -6,7 +6,7 @@ import de.vw.mib.bap.mqbab2.common.api.APIFactory;
 import de.vw.mib.bap.mqbab2.common.api.navigation.NavigationASLDataAdapter;
 import org.dsi.ifc.androidauto2.Constants;
 import org.dsi.ifc.navigation.BapManeuverDescriptor;
-
+ 
 
 
 public class NavigationHandler {
