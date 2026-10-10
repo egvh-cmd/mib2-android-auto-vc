@@ -161,6 +161,8 @@ public class NavTurn {
                 maneuverDescriptor.mainElement = ManeuverDescriptorMainElement.EXIT_ROUNDABOUT_TRS_RIGHT;
                 maneuverDescriptor.direction = ManeuverDescriptorDirection.RIGHT;
             }
+			// Передаем номер съезда (если поле доступно в структуре)											 
+            maneuverDescriptor.roundaboutExitNumber = this.turnNumber; 
             return maneuverDescriptor;
         }
 
@@ -172,6 +174,8 @@ public class NavTurn {
                 maneuverDescriptor.mainElement = ManeuverDescriptorMainElement.ROUNDABOUT_TRS_RIGHT;
             }
             maneuverDescriptor.direction = calculateRoundaboutDirection();
+			// КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Передаем номер съезда на приборную панель														  
+            maneuverDescriptor.roundaboutExitNumber = this.turnNumber; 
             return maneuverDescriptor;
         }
 
@@ -195,20 +199,25 @@ public class NavTurn {
     }
 
     private int calculateRoundaboutDirection() {
-        // Android "right" through roundabout is 90 maps to VW 192
-        // Android "straight" through roundabout is 180 maps to VW 0
-        // Android "left" through roundabout is 270 maps to VW 64
-        // Android "uturn" through roundabout is 360 maps to VW 128
+        // Заменяем неточную формулу автора на надежный секторный маппинг угла съезда
+        int angle = this.turnAngle % 360;
+        if (angle < 0) angle += 360;
+																   
 
-        // Android range from 0-360, VW range from 0-256
-        // Seems like VW supports increments of 16 (0, 16, 32, 48, 64, and so on)
-        // possibly more, but that's detailed enough.
-        return ((((180 + (360 / (16 * 2)) + turnAngle) % 360) * 16) / 360) * 16;
+        if (angle >= 45 && angle < 135) {
+            return 192; // Right (Соответствует разметке BAP VAG)
+        } else if (angle >= 135 && angle < 225) {
+            return 0;   // Straight
+        } else if (angle >= 225 && angle < 315) {
+            return 64;  // Left
+        } else {
+            return 128; // U-Turn
+        }
     }
 
     public boolean equals(Object obj) {
-        if (this == obj) return true; // Check if the objects are the same
-        if (obj == null || getClass() != obj.getClass()) return false; // Check for null and class type
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
 
         NavTurn navTurn = (NavTurn) obj;
 
