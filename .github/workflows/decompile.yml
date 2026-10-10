@@ -4,37 +4,62 @@ on:
   workflow_dispatch:
     inputs:
       file_url:
-        description: 'Прямая ссылка на lsd.jxe с DropMeFiles'
+        description: 'Публичная ссылка на lsd.jxe с Яндекс Диска'
         required: true
         default: ''
 
 jobs:
   decompile:
-    runs-on: ubuntu-latest
+    # Фиксируем стабильную ОС, чтобы избежать предупреждений
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Download lsd.jxe from link
+    # Обновляем версию Java до v5, чтобы убрать предупреждение Node.js 20
+    - name: Set up JDK 8
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'zulu'
+        java-version: '8'
+
+    - name: Download lsd.jxe from Yandex Disk
       run: |
-        # Скачиваем файл по вашей ссылке и переименовываем в lsd.jxe
-        curl -L -o lsd.jxe "${{ github.event.inputs.file_url }}"
+        # Используем официальный API Яндекс Диска для получения прямой ссылки на скачивание
+        PUBLIC_URL="${{ github.event.inputs.file_url }}"
+        echo "Запрашиваем прямую ссылку у API Яндекс Диска..."
+        
+        API_RESPONSE=$(curl -s "https://yandex.net{PUBLIC_URL}")
+        DOWNLOAD_URL=$(echo $API_RESPONSE | grep -o '"href":"[^"]*' | grep -o '[^"]*$')
+        
+        if [ -z "$DOWNLOAD_URL" ]; then
+          echo "ОШИБКА: Не удалось получить прямую ссылку! Проверьте, что файл открыт для доступа по ссылке."
+          exit 1
+        fi
+        
+        echo "Скачиваем файл..."
+        wget -O lsd.jxe "$DOWNLOAD_URL"
+        
+        # Проверяем размер скачанного файла
+        FILE_SIZE=$(stat -c%s "lsd.jxe")
+        echo "Скачан файл размером: $FILE_SIZE байт"
+        if [ $FILE_SIZE -lt 1000000 ]; then
+          echo "ОШИБКА: Скачанный файл слишком мал. Вероятно, скачалась ошибка вместо прошивки."
+          exit 1
+        fi
 
     - name: Convert JXE to JAR using Docker
       run: |
         docker run --rm -v ${{ github.workspace }}:/data ghcr.io/adi961/jxe2jar:latest bash -c "python2 JXE2JAR.py /data/lsd.jxe /data/lsd.jar"
 
-    - name: Set up JDK 8
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'zulu'
-        java-version: '8'
-
     - name: Decompile JAR to Java Source Code
       run: |
         mkdir -p tools
-        curl -L -o tools/cfr-0.152.jar https://github.com
+        # Скачиваем полную рабочую версию декомпилятора CFR
+        wget -O tools/cfr-0.152.jar https://github.com
+        
+        # Запускаем декомпиляцию
         java -jar tools/cfr-0.152.jar lsd.jar --previewfeatures false --switchexpression false --removeinnerclasssynthetics false --outputdir lsd_source
 
     - name: Archive Source Code
