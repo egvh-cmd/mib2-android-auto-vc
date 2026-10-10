@@ -1,4 +1,4 @@
-name: Inspect and Compile VCAndroidAuto
+name: Inspect and Compile VCAndroidAuto 
 
 on:
   push:
