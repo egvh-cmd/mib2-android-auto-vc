@@ -1,0 +1,48 @@
+name: Decompile LSD JXE
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_url:
+        description: 'Прямая ссылка на lsd.jxe с DropMeFiles'
+        required: true
+        default: ''
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download lsd.jxe from link
+      run: |
+        # Скачиваем файл по вашей ссылке и переименовываем в lsd.jxe
+        curl -L -o lsd.jxe "${{ github.event.inputs.file_url }}"
+
+    - name: Convert JXE to JAR using Docker
+      run: |
+        docker run --rm -v ${{ github.workspace }}:/data ghcr.io/adi961/jxe2jar:latest bash -c "python2 JXE2JAR.py /data/lsd.jxe /data/lsd.jar"
+
+    - name: Set up JDK 8
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '8'
+
+    - name: Decompile JAR to Java Source Code
+      run: |
+        mkdir -p tools
+        curl -L -o tools/cfr-0.152.jar https://github.com
+        java -jar tools/cfr-0.152.jar lsd.jar --previewfeatures false --switchexpression false --removeinnerclasssynthetics false --outputdir lsd_source
+
+    - name: Archive Source Code
+      run: |
+        zip -r lsd_source.zip lsd_source/
+
+    - name: Upload Decompiled Source
+      uses: actions/upload-artifact@v4
+      with:
+        name: MIB2-LSD-Java-Source
+        path: lsd_source.zip
