@@ -24,11 +24,17 @@ public class NavigationHandler {
         adapter.datapoolValueChanged(733); // Navigation status id
 
         switch (focus) {
-            case Constants.NAVFOCUS_NATIVE: {
-                navStopped();
-            }
             case Constants.NAVFOCUS_PROJECTED: {
                 navStarted();
+                break;
+            }
+            case Constants.NAVFOCUS_NATIVE: {
+                navStopped();
+                break;
+            }
+            default: {
+            navStopped();
+            break;
             }
         }
     }
