@@ -14,23 +14,21 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up JDK 8
-      uses: actions/actions-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
         java-version: '8'
-
-    - name: Download dependencies
-      run: |
-        mkdir -p tools
-        # Скачиваем декомпилятор/компилятор CFR, который указан в проекте
-        curl -L -o tools/cfr-0.152.jar https://github.com
 
     - name: Compile Java Code
       run: |
         mkdir -p build/classes
         mkdir -p build/out
-        # Компилируем исправленный файл. В качестве библиотек используем структуры проекта
-        javac -source 1.2 -target 1.2 -d build/classes src/de/vw/mib/asl/internal/androidauto/target/NavigationHandler.java
+        
+        # Скачиваем lsd.jar из репозитория для успешной сборки
+        curl -L -o tools/lsd.jar https://github.com || true
+        
+        # Компилируем исправленный файл с поддержкой старой Java
+        javac -source 1.6 -target 1.6 -cp "tools/lsd.jar" -d build/classes src/de/vw/mib/asl/internal/androidauto/target/NavigationHandler.java
         
     - name: Create JAR Archive
       run: |
