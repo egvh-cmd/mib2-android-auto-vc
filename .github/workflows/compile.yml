@@ -7,49 +7,63 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Явно фиксируем стабильную версию Ubuntu, чтобы избежать багов обновления
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # Переходим на рекомендованную setup-java v5 (работает на актуальном Node.js)
     - name: Set up JDK 8
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'zulu'
         java-version: '8'
 
     - name: Create Stub Classes for Compilation
       run: |
+        # Тщательно создаем структуру каталогов для всех импортов
         mkdir -p src/de/vw/mib/asl/api/navbap
         mkdir -p src/de/vw/mib/bap/mqbab2/common/api/navigation
         mkdir -p src/org/dsi/ifc/androidauto2
         mkdir -p src/org/dsi/ifc/navigation
         mkdir -p src/de/adi961/miblogger
 
-        # Создаем минимальные заглушки, чтобы компилятор не падал в ошибку
-        echo "package de.adi961.miblogger; public class MIBLogger { public static MIBLogger getInstance() { return new MIBLogger(); } public void trace(String s) {} public void error(String s) {} }" > src/de/adi961/miblogger/MIBLogger.java
+        # Генерируем правильные файлы-заглушки
+        echo "package de.adi961.miblogger; public class MIBLogger { public static MIBLogger getInstance() { return new MIBLogger(); } public void trace(String s) {} public void error(String s) {} public void info(String s) {} public void debug(String s) {} }" > src/de/adi961/miblogger/MIBLogger.java
         echo "package de.vw.mib.asl.api.navbap; public class ASLNavBAPFactory { public static NavBAPApi getNavBAPApi() { return new NavBAPApi(); } public static class NavBAPApi { public NavigationBAPStage getNavigationBAPStage() { return new NavigationBAPStage(); } public void updateBapTurnToInfo(String s1, String s2) {} public void updateBapDistanceToNextManeuver(int d, int u, boolean b, int bg) {} } public static class NavigationBAPStage { public void setTurnDirection(int d) {} public void setDistanceToManeuver(int d) {} public void setNavigationStatus(int s) {} } }" > src/de/vw/mib/asl/api/navbap/ASLNavBAPFactory.java
-        echo "package de.vw.mib.bap.mqbab2.common.api; import de.vw.mib.bap.mqbab2.common.api.navigation.NavigationASLDataAdapter; public class APIFactory { public static APIFactory getAPIFactory() { return new APIFactory(); } public NavigationASLDataAdapter getNavigationService() { return new NavigationASLDataAdapter(); } }" > src/de/vw/mib/bap/mqbab2/common/api/APIFactory.java
+        echo "package de.vw.mib.bap.mqbab2.common.api; import de.vw.mib.bap.mqbab2.common.api.navigation.NavigationASLDataAdapter; public class APIFactory { public static APIFactory getAPIFactory() { return new APIFactory(); } public Object getNavigationService() { return new NavigationASLDataAdapter(); } }" > src/de/vw/mib/bap/mqbab2/common/api/APIFactory.java
         echo "package de.vw.mib.bap.mqbab2.common.api.navigation; public class NavigationASLDataAdapter { public void datapoolValueChanged(int id) {} }" > src/de/vw/mib/bap/mqbab2/common/api/navigation/NavigationASLDataAdapter.java
         echo "package org.dsi.ifc.androidauto2; public class Constants { public static final int NAVFOCUS_NATIVE = 1; public static final int NAVFOCUS_PROJECTED = 2; public static final int NAVIGATIONTURNEVENT_OFF_RAMP = 0; }" > src/org/dsi/ifc/androidauto2/Constants.java
         echo "package org.dsi.ifc.navigation; public class BapManeuverDescriptor { public int mainElement; public int direction; }" > src/org/dsi/ifc/navigation/BapManeuverDescriptor.java
-        echo "package de.vw.mib.asl.internal.androidauto.target; public class ManeuverDescriptorSender { public void reset() {} public void send(Object o) {} }" > src/de/vw/mib/asl/internal/androidauto/ManeuverDescriptorSender.java
-        echo "package de.vw.mib.asl.internal.androidauto.target; public class NavTurn { public NavTurn(int s, int e, int a, int n) {} public int getEvent() { return 0; } public Object toManeuverDescriptor() { return null; } }" > src/de/vw/mib/asl/internal/androidauto/NavTurn.java
-        echo "package de.vw.mib.asl.internal.androidauto.target; public class ManeuverDescriptorMainElement { public static final int FOLLOW_STREET = 1; }" > src/de/vw/mib/asl/internal/androidauto/ManeuverDescriptorMainElement.java
-        echo "package de.vw.mib.asl.internal.androidauto.target; public class ManeuverDescriptorDirection { public static final int STRAIGHT = 1; }" > src/de/vw/mib/asl/internal/androidauto/ManeuverDescriptorDirection.java
+        echo "package de.vw.mib.asl.internal.androidauto.target; public class ManeuverDescriptorSender { public void reset() {} public void send(Object o) {} }" > src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorSender.java
+        echo "package de.vw.mib.asl.internal.androidauto.target; public class NavTurn { public NavTurn(int s, int e, int a, int n) {} public int getEvent() { return 0; } public Object toManeuverDescriptor() { return null; } }" > src/de/vw/mib/asl/internal/androidauto/target/NavTurn.java
+        echo "package de.vw.mib.asl.internal.androidauto.target; public class ManeuverDescriptorMainElement { public static final int FOLLOW_STREET = 1; }" > src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorMainElement.java
+        echo "package de.vw.mib.asl.internal.androidauto.target; public class ManeuverDescriptorDirection { public static final int STRAIGHT = 1; }" > src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorDirection.java
 
     - name: Compile Target File
       run: |
         mkdir -p build/classes
         mkdir -p build/out
         
-        # Компилируем только наш измененный файл вместе с созданными заглушками
-        javac -source 1.6 -target 1.6 -d build/classes src/de/vw/mib/asl/internal/androidauto/target/NavigationHandler.java src/de/vw/mib/asl/api/navbap/ASLNavBAPFactory.java src/de/vw/mib/bap/mqbab2/common/api/APIFactory.java src/de/vw/mib/bap/mqbab2/common/api/navigation/NavigationASLDataAdapter.java src/org/dsi/ifc/androidauto2/Constants.java src/org/dsi/ifc/navigation/BapManeuverDescriptor.java
+        # Запускаем компиляцию всех связанных классов одной командой в общую директорию классов
+        javac -source 1.6 -target 1.6 -d build/classes \
+          src/de/adi961/miblogger/MIBLogger.java \
+          src/de/vw/mib/asl/api/navbap/ASLNavBAPFactory.java \
+          src/de/vw/mib/bap/mqbab2/common/api/APIFactory.java \
+          src/de/vw/mib/bap/mqbab2/common/api/navigation/NavigationASLDataAdapter.java \
+          src/org/dsi/ifc/androidauto2/Constants.java \
+          src/org/dsi/ifc/navigation/BapManeuverDescriptor.java \
+          src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorSender.java \
+          src/de/vw/mib/asl/internal/androidauto/target/NavTurn.java \
+          src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorMainElement.java \
+          src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorDirection.java \
+          src/de/vw/mib/asl/internal/androidauto/target/NavigationHandler.java
         
     - name: Create JAR Archive
       run: |
-        # Упаковываем строго скомпилированный класс обработчика навигации
+        # Изолированно упаковываем только готовый NavigationHandler.class, как это требуется для инъекции
         jar cvf build/out/VCAndroidAuto.jar -C build/classes de/vw/mib/asl/internal/androidauto/target/NavigationHandler.class
 
     - name: Upload Artifact
