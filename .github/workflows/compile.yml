@@ -64,15 +64,35 @@ jobs:
           src/de/vw/mib/asl/internal/androidauto/target/NavTurn.java \
           src/de/vw/mib/asl/internal/androidauto/target/NavigationHandler.java
 
-    - name: Create JAR Archive
+    - name: Create Patch JAR Archive
       run: |
         # Упаковываем строго 2 наших скомпилированных измененных класса
-        jar cvf build/out/VCAndroidAuto.jar \
+        jar cvf build/out/VCAndroidAuto-patch.jar \
           -C build/classes de/vw/mib/asl/internal/androidauto/target/NavigationHandler.class \
           -C build/classes de/vw/mib/asl/internal/androidauto/target/NavTurn.class
 
-    - name: Upload Artifact
+    - name: Merge Into Full Release JAR
+      run: |
+        # Скачиваем полный релизный JAR со всеми пропатченными классами мода
+        # и подменяем в нём два пересобранных класса — артефакт готов к установке
+        curl -fL -o build/out/VCAndroidAuto.jar \
+          https://github.com/adi961/mib2-android-auto-vc/releases/latest/download/VCAndroidAuto.jar
+
+        jar uf build/out/VCAndroidAuto.jar \
+          -C build/classes de/vw/mib/asl/internal/androidauto/target/NavigationHandler.class \
+          -C build/classes de/vw/mib/asl/internal/androidauto/target/NavTurn.class
+
+        # Контроль: два класса должны лежать в JAR с сегодняшней датой
+        unzip -l build/out/VCAndroidAuto.jar | grep -E "NavTurn|NavigationHandler"
+
+    - name: Upload Full JAR Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: VCAndroidAuto-Fixed-Jar
+        name: VCAndroidAuto-Full-Jar
         path: build/out/VCAndroidAuto.jar
+
+    - name: Upload Patch JAR Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: VCAndroidAuto-Patch-Jar
+        path: build/out/VCAndroidAuto-patch.jar
