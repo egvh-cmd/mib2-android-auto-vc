@@ -26,64 +26,71 @@ jobs:
         # ManeuverDescriptorDirection) НЕ перезаписываются: javac инлайнит значения
         # static final int прямо в байткод, поэтому компилировать нужно строго
         # против настоящих значений из src/.
+        # В JAR заглушки не попадают — на устройстве подхватятся настоящие классы.
         mkdir -p src/de/vw/mib/asl/api/navbap
         mkdir -p src/de/vw/mib/bap/mqbab2/common/api/navigation
-        mkdir -p src/org/dsi/ifc/navigation
+        mkdir -p src/de/vw/mib/asl/framework/internal/framework
+        mkdir -p src/generated/de/vw/mib/asl/internal
 
         # 1. Интерфейсы шины BAP (Virtual Cockpit)
         echo "package de.vw.mib.asl.api.navbap; public class ASLNavBAPFactory { public static NavBAPApi getNavBAPApi() { return new NavBAPApi(); } public static class NavBAPApi { public void updateBapTurnToInfo(String s1, String s2) {} public void updateBapDistanceToNextManeuver(int d, int u, boolean b, int bg) {} } }" > src/de/vw/mib/asl/api/navbap/ASLNavBAPFactory.java
         echo "package de.vw.mib.bap.mqbab2.common.api; import de.vw.mib.bap.mqbab2.common.api.navigation.NavigationASLDataAdapter; public class APIFactory { public static APIFactory getAPIFactory() { return new APIFactory(); } public Object getNavigationService() { return new NavigationASLDataAdapter(); } }" > src/de/vw/mib/bap/mqbab2/common/api/APIFactory.java
         echo "package de.vw.mib.bap.mqbab2.common.api.navigation; public class NavigationASLDataAdapter { public void datapoolValueChanged(int id) {} }" > src/de/vw/mib/bap/mqbab2/common/api/navigation/NavigationASLDataAdapter.java
 
-        # 2. Класс оригинального дескриптора VAG (в src/ его нет, он из прошивки)
-        echo "package org.dsi.ifc.navigation; public class BapManeuverDescriptor { public int mainElement; public int direction; public int roundaboutExitNumber; }" > src/org/dsi/ifc/navigation/BapManeuverDescriptor.java
-
-        # 3. Заглушка отправителя дескрипторов. Настоящий ManeuverDescriptorSender.java
-        #    есть в src/, но он импортирует ListManager/GenericCollector из прошивки,
-        #    которых в репозитории нет — поэтому для компиляции подменяем его заглушкой
-        #    с теми же сигнатурами методов. В JAR заглушка не попадает.
-        echo "package de.vw.mib.asl.internal.androidauto.target; public class ManeuverDescriptorSender { public void reset() {} public void send(Object o) {} }" > src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorSender.java
+        # 2. ASL-списки и коллекторы прошивки (нужны ManeuverDescriptorSender)
+        echo "package de.vw.mib.asl.framework.internal.framework; public class GenericCollector { public void setIntItem(int i, int v) {} public void setStringItem(int i, String s) {} }" > src/de/vw/mib/asl/framework/internal/framework/GenericCollector.java
+        echo "package generated.de.vw.mib.asl.internal; public class ListManager { public static GenericASLList getGenericASLList(int id) { return new GenericASLList(); } public static class GenericASLList { public void updateList(Object[] a) {} } }" > src/generated/de/vw/mib/asl/internal/ListManager.java
 
     - name: Compile Java Code
       run: |
         mkdir -p build/classes
         mkdir -p build/out
 
-        # Компилируем наши 2 файла против НАСТОЯЩИХ файлов репозитория
-        # (Constants, MIBLogger, ManeuverDescriptor*) и заглушек зависимостей
+        # Компилируем наши 4 файла против НАСТОЯЩИХ файлов репозитория
+        # (Constants, MIBLogger, ManeuverDescriptor*) и заглушек зависимостей.
+        # VCManeuverDescriptor — собственный контейнер, заменяющий DSI-класс
+        # прошивки BapManeuverDescriptor (в MU1367 у него нет поля direction).
         javac -source 1.6 -target 1.6 -d build/classes \
           src/de/adi961/miblogger/MIBLogger.java \
           src/org/dsi/ifc/androidauto2/Constants.java \
           src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorMainElement.java \
           src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorDirection.java \
+          src/de/vw/mib/asl/internal/androidauto/target/VCManeuverDescriptor.java \
+          src/de/vw/mib/asl/internal/androidauto/target/NavTurn.java \
+          src/de/vw/mib/asl/internal/androidauto/target/NavigationHandler.java \
+          src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorSender.java \
           src/de/vw/mib/asl/api/navbap/ASLNavBAPFactory.java \
           src/de/vw/mib/bap/mqbab2/common/api/APIFactory.java \
           src/de/vw/mib/bap/mqbab2/common/api/navigation/NavigationASLDataAdapter.java \
-          src/org/dsi/ifc/navigation/BapManeuverDescriptor.java \
-          src/de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorSender.java \
-          src/de/vw/mib/asl/internal/androidauto/target/NavTurn.java \
-          src/de/vw/mib/asl/internal/androidauto/target/NavigationHandler.java
+          src/de/vw/mib/asl/framework/internal/framework/GenericCollector.java \
+          src/generated/de/vw/mib/asl/internal/ListManager.java
 
     - name: Create Patch JAR Archive
       run: |
-        # Упаковываем строго 2 наших скомпилированных измененных класса
+        # Упаковываем строго наши 4 скомпилированных класса
         jar cvf build/out/VCAndroidAuto-patch.jar \
           -C build/classes de/vw/mib/asl/internal/androidauto/target/NavigationHandler.class \
-          -C build/classes de/vw/mib/asl/internal/androidauto/target/NavTurn.class
+          -C build/classes de/vw/mib/asl/internal/androidauto/target/NavTurn.class \
+          -C build/classes de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorSender.class \
+          -C build/classes de/vw/mib/asl/internal/androidauto/target/VCManeuverDescriptor.class
 
     - name: Merge Into Full Release JAR
       run: |
         # Скачиваем полный релизный JAR со всеми пропатченными классами мода
-        # и подменяем в нём два пересобранных класса — артефакт готов к установке
+        # и подменяем в нём пересобранные классы — артефакт готов к установке.
+        # ManeuverDescriptorSender тоже подменяем: апстримная версия вызывает
+        # getDirection()/4-аргументный конструктор, которых нет в MU1367.
         curl -fL -o build/out/VCAndroidAuto.jar \
           https://github.com/adi961/mib2-android-auto-vc/releases/latest/download/VCAndroidAuto.jar
 
         jar uf build/out/VCAndroidAuto.jar \
           -C build/classes de/vw/mib/asl/internal/androidauto/target/NavigationHandler.class \
-          -C build/classes de/vw/mib/asl/internal/androidauto/target/NavTurn.class
+          -C build/classes de/vw/mib/asl/internal/androidauto/target/NavTurn.class \
+          -C build/classes de/vw/mib/asl/internal/androidauto/target/ManeuverDescriptorSender.class \
+          -C build/classes de/vw/mib/asl/internal/androidauto/target/VCManeuverDescriptor.class
 
-        # Контроль: два класса должны лежать в JAR с сегодняшней датой
-        unzip -l build/out/VCAndroidAuto.jar | grep -E "NavTurn|NavigationHandler"
+        # Контроль: все 4 класса должны лежать в JAR
+        unzip -l build/out/VCAndroidAuto.jar | grep -E "NavTurn|NavigationHandler|ManeuverDescriptorSender|VCManeuverDescriptor"
 
     - name: Upload Full JAR Artifact
       uses: actions/upload-artifact@v4

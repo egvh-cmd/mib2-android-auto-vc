@@ -1,7 +1,6 @@
 package de.vw.mib.asl.internal.androidauto.target;
 
 import org.dsi.ifc.androidauto2.Constants;
-import org.dsi.ifc.navigation.BapManeuverDescriptor;
 
 public class NavTurn {
     private int turnSide;
@@ -33,8 +32,8 @@ public class NavTurn {
     }
 
 
-    public BapManeuverDescriptor toManeuverDescriptor() {
-        BapManeuverDescriptor maneuverDescriptor = new BapManeuverDescriptor();
+    public VCManeuverDescriptor toManeuverDescriptor() {
+        VCManeuverDescriptor maneuverDescriptor = new VCManeuverDescriptor();
 
         if (event == Constants.NAVIGATIONTURNEVENT_DEPART) {
             maneuverDescriptor.mainElement = ManeuverDescriptorMainElement.DIRECTION_TO_DESTINATION;

@@ -5,7 +5,6 @@ import de.vw.mib.asl.api.navbap.ASLNavBAPFactory;
 import de.vw.mib.bap.mqbab2.common.api.APIFactory;
 import de.vw.mib.bap.mqbab2.common.api.navigation.NavigationASLDataAdapter;
 import org.dsi.ifc.androidauto2.Constants;
-import org.dsi.ifc.navigation.BapManeuverDescriptor;
  
 
 
@@ -108,7 +107,7 @@ public class NavigationHandler {
     }
 
     private void sendFollowRoadManeuverDescriptor() {
-        BapManeuverDescriptor maneuverDescriptor = new BapManeuverDescriptor();
+        VCManeuverDescriptor maneuverDescriptor = new VCManeuverDescriptor();
         maneuverDescriptor.mainElement = ManeuverDescriptorMainElement.FOLLOW_STREET;
         maneuverDescriptor.direction = ManeuverDescriptorDirection.STRAIGHT;
 

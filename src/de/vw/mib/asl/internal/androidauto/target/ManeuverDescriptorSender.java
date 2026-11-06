@@ -3,49 +3,48 @@ package de.vw.mib.asl.internal.androidauto.target;
 import de.adi961.miblogger.MIBLogger;
 import de.vw.mib.asl.framework.internal.framework.GenericCollector;
 import generated.de.vw.mib.asl.internal.ListManager;
-import org.dsi.ifc.navigation.BapManeuverDescriptor;
 
 import java.util.Vector;
 
 public class ManeuverDescriptorSender {
 
-    private BapManeuverDescriptor lastManeuverDescriptor;
+    private VCManeuverDescriptor lastManeuverDescriptor;
 
     public void reset() {
         lastManeuverDescriptor = null;
     }
 
-    public void send(BapManeuverDescriptor bapManeuverDescriptor) {
-        if (lastManeuverDescriptor != null && lastManeuverDescriptor.toString().equals(bapManeuverDescriptor.toString())) {
+    public void send(VCManeuverDescriptor maneuverDescriptor) {
+        if (lastManeuverDescriptor != null && lastManeuverDescriptor.toString().equals(maneuverDescriptor.toString())) {
             MIBLogger.getInstance().debug("same maneuver descriptor. Not sending.");
             return;
         }
 
-        sendBapManeuverDescriptor(new BapManeuverDescriptor[]{bapManeuverDescriptor});
-        this.lastManeuverDescriptor = bapManeuverDescriptor;
+        sendManeuverDescriptor(new VCManeuverDescriptor[]{maneuverDescriptor});
+        this.lastManeuverDescriptor = maneuverDescriptor;
     }
 
-    private void sendBapManeuverDescriptor(BapManeuverDescriptor[] bapManeuverDescriptorArray) {
-        BapManeuverDescriptor[] bapManeuverDescriptorArray2 = bapManeuverDescriptorArray;
-        if (bapManeuverDescriptorArray2 == null || bapManeuverDescriptorArray2.length == 0) {
-            bapManeuverDescriptorArray2 = new BapManeuverDescriptor[]{new BapManeuverDescriptor(0, 0, 0, new byte[0])};
+    private void sendManeuverDescriptor(VCManeuverDescriptor[] maneuverDescriptorArray) {
+        VCManeuverDescriptor[] descriptors = maneuverDescriptorArray;
+        if (descriptors == null || descriptors.length == 0) {
+            descriptors = new VCManeuverDescriptor[]{new VCManeuverDescriptor()};
         }
 
         Vector object = new Vector();
-        GenericCollector[] genericCollectorArray = new GenericCollector[bapManeuverDescriptorArray2.length];
-        for (int i3 = 0; i3 < bapManeuverDescriptorArray2.length; ++i3) {
+        GenericCollector[] genericCollectorArray = new GenericCollector[descriptors.length];
+        for (int i = 0; i < descriptors.length; ++i) {
             GenericCollector genericCollector = new GenericCollector();
-            genericCollector.setIntItem(0, bapManeuverDescriptorArray2[i3].getMainElement());
-            genericCollector.setIntItem(1, bapManeuverDescriptorArray2[i3].getDirection());
-            genericCollector.setIntItem(2, bapManeuverDescriptorArray2[i3].getZLevelGuidance());
+            genericCollector.setIntItem(0, descriptors[i].mainElement);
+            genericCollector.setIntItem(1, descriptors[i].direction);
+            genericCollector.setIntItem(2, descriptors[i].zLevelGuidance);
             String string = "";
-            byte[] byArray = bapManeuverDescriptorArray2[i3].getSideStreets();
+            byte[] byArray = descriptors[i].sideStreets;
             if (byArray != null) {
                 string = new String(ManeuverDescriptorSender.bytesToCharacters(byArray));
             }
             genericCollector.setStringItem(3, string);
             ((Vector) object).add(genericCollector);
-            genericCollectorArray[i3] = genericCollector;
+            genericCollectorArray[i] = genericCollector;
         }
 
         ListManager.getGenericASLList(751).updateList(genericCollectorArray);
@@ -55,8 +54,8 @@ public class ManeuverDescriptorSender {
     private static char[] bytesToCharacters(byte[] byArray) {
         int n = byArray.length;
         char[] cArray = new char[n];
-        for (int i2 = 0; i2 < n; ++i2) {
-            cArray[i2] = (char) (byArray[i2] & 0xFF);
+        for (int i = 0; i < n; ++i) {
+            cArray[i] = (char) (byArray[i] & 0xFF);
         }
         return cArray;
     }
